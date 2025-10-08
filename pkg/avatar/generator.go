@@ -12,25 +12,17 @@ import (
 )
 
 const (
-	// AssetRoot is the root directory for all assets.
-	AssetRoot = "assets"
-	// CommonDir is a fallback directory for assets that are not country or gender specific.
-	CommonDir = "common"
+	// AssetRoot is the root directory for all avataaars assets.
+	AssetRoot = "assets/avataaars"
 )
 
 // Generator holds the configuration for creating an avatar.
-type Generator struct {
-	Country string
-	Gender  string
-}
+type Generator struct{}
 
-// NewGenerator creates a new avatar generator with the specified options.
-func NewGenerator(country, gender string) *Generator {
+// NewGenerator creates a new avatar generator.
+func NewGenerator() *Generator {
 	rand.Seed(time.Now().UnixNano())
-	return &Generator{
-		Country: country,
-		Gender:  gender,
-	}
+	return &Generator{}
 }
 
 // Generate creates a new avatar and returns it as an SVG string.
@@ -41,20 +33,20 @@ func (g *Generator) Generate() (string, error) {
 	}
 
 	if len(layers) == 0 {
-		return "", fmt.Errorf("no layers found for the given criteria (country: %s, gender: %s)", g.Country, g.Gender)
+		return "", fmt.Errorf("no layers found in the assets directory")
 	}
 
 	var svgBuilder strings.Builder
 
 	// Start the SVG wrapper. Using a viewBox is crucial for scaling and defining the coordinate system.
-	svgBuilder.WriteString(`<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">`)
+	svgBuilder.WriteString(`<svg width="264" height="280" viewBox="0 0 264 280" xmlns="http://www.w3.org/2000/svg">`)
 	svgBuilder.WriteString("\n") // Newline for readability
 
 	// Append each layer's content
 	for _, layerPath := range layers {
 		svgPart, err := g.getRandomSVGPart(layerPath)
 		if err != nil {
-			// If a layer directory is empty (e.g., no country-specific hair), we skip it.
+			// If a layer directory is empty, we skip it.
 			if os.IsNotExist(err) {
 				continue
 			}
@@ -70,49 +62,24 @@ func (g *Generator) Generate() (string, error) {
 	return svgBuilder.String(), nil
 }
 
-// collectLayers finds all layer directories based on the specified country and gender.
-// It implements a fallback mechanism: country/gender -> common/gender -> country/common -> common/common.
+// collectLayers finds all layer directories in the asset root.
 func (g *Generator) collectLayers() ([]string, error) {
-	// Use a map to collect unique layer directories, keyed by layer name (e.g., "01_body").
-	layerMap := make(map[string]string)
-
-	// Define search paths with decreasing specificity.
-	searchPaths := []string{
-		filepath.Join(AssetRoot, g.Country, g.Gender),
-		filepath.Join(AssetRoot, CommonDir, g.Gender),
-		filepath.Join(AssetRoot, g.Country, CommonDir),
-		filepath.Join(AssetRoot, CommonDir, CommonDir),
+	var layerPaths []string
+	files, err := ioutil.ReadDir(AssetRoot)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read asset root directory %s: %w", AssetRoot, err)
 	}
 
-	for _, path := range searchPaths {
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			continue // Skip if the base directory doesn't exist
-		}
-
-		files, err := ioutil.ReadDir(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read directory %s: %w", path, err)
-		}
-
-		for _, file := range files {
-			if file.IsDir() {
-				layerName := file.Name()
-				// Only add the layer if it hasn't been found in a more specific path.
-				if _, exists := layerMap[layerName]; !exists {
-					layerMap[layerName] = filepath.Join(path, layerName)
-				}
-			}
+	for _, file := range files {
+		if file.IsDir() {
+			layerPaths = append(layerPaths, filepath.Join(AssetRoot, file.Name()))
 		}
 	}
 
-	// Sort the layers by name to ensure correct drawing order (e.g., 00_background, 01_body, ...).
-	var sortedLayers []string
-	for _, layerPath := range layerMap {
-		sortedLayers = append(sortedLayers, layerPath)
-	}
-	sort.Strings(sortedLayers)
+	// Sort the layers by name to ensure correct drawing order (e.g., 01_clothe, 02_eyes, ...).
+	sort.Strings(layerPaths)
 
-	return sortedLayers, nil
+	return layerPaths, nil
 }
 
 // getRandomSVGPart selects a random SVG from a layer directory, reads it,

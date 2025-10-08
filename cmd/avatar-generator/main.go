@@ -14,20 +14,13 @@ import (
 
 func main() {
 	// Define and parse command-line flags
-	country := flag.String("country", "china", "The country for the avatar (e.g., 'china', 'usa').")
-	gender := flag.String("gender", "male", "The gender for the avatar (e.g., 'male', 'female').")
 	outputDir := flag.String("output", "output", "The directory to save the generated avatar.")
 	flag.Parse()
 
-	// Validate inputs
-	if *country == "" || *gender == "" {
-		log.Fatal("Country and gender flags must be provided.")
-	}
-
-	fmt.Printf("Generating SVG avatar for country: %s, gender: %s\n", *country, *gender)
+	fmt.Println("Generating avataaar SVG avatar...")
 
 	// Create the generator
-	g := avatar.NewGenerator(*country, *gender)
+	g := avatar.NewGenerator()
 
 	// Generate the avatar SVG as a string
 	svgContent, err := g.Generate()
@@ -42,7 +35,7 @@ func main() {
 
 	// Create a unique filename with the .svg extension
 	timestamp := time.Now().Unix()
-	fileName := fmt.Sprintf("avatar_%s_%s_%d.svg", *country, *gender, timestamp)
+	fileName := fmt.Sprintf("avataaar_%d.svg", timestamp)
 	filePath := filepath.Join(*outputDir, fileName)
 
 	// Write the SVG string content to the file
