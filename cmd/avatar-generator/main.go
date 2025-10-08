@@ -9,25 +9,33 @@ import (
 	"path/filepath"
 	"time"
 
+	"strings"
+
 	"avatar-generator/pkg/avatar"
+	"avatar-generator/pkg/countries"
 )
 
 func main() {
 	// Define and parse command-line flags
-	country := flag.String("country", "china", "The country for the avatar (e.g., 'china', 'usa').")
+	country := flag.String("country", "cn", "The ISO 3166-1 alpha-2 country code for the avatar (e.g., 'cn', 'us').")
 	gender := flag.String("gender", "male", "The gender for the avatar (e.g., 'male', 'female').")
 	outputDir := flag.String("output", "output", "The directory to save the generated avatar.")
 	flag.Parse()
 
 	// Validate inputs
-	if *country == "" || *gender == "" {
-		log.Fatal("Country and gender flags must be provided.")
+	processedCountry := strings.ToLower(*country)
+	if !countries.IsValidCode(processedCountry) {
+		log.Fatalf("Invalid country code: %s. Please provide a valid ISO 3166-1 alpha-2 code.", *country)
 	}
 
-	fmt.Printf("Generating SVG avatar for country: %s, gender: %s\n", *country, *gender)
+	if *gender == "" {
+		log.Fatal("Gender flag must be provided.")
+	}
+
+	fmt.Printf("Generating SVG avatar for country: %s, gender: %s\n", processedCountry, *gender)
 
 	// Create the generator
-	g := avatar.NewGenerator(*country, *gender)
+	g := avatar.NewGenerator(processedCountry, *gender)
 
 	// Generate the avatar SVG as a string
 	svgContent, err := g.Generate()
